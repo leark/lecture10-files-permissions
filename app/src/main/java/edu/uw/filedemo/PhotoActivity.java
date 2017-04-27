@@ -1,6 +1,7 @@
 package edu.uw.filedemo;
 
 import android.content.Intent;
+import android.media.MediaScannerConnection;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Environment;
@@ -21,7 +22,8 @@ public class PhotoActivity extends AppCompatActivity {
 
     private static final int REQUEST_IMAGE_CAPTURE = 1;
 
-    private Uri pictureFileUri = null;
+    private Uri pictureFileUri = null; //for saving
+    private Uri mediaStoreUri = null; //for sharing
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -43,7 +45,7 @@ public class PhotoActivity extends AppCompatActivity {
                 String timestamp = new SimpleDateFormat("yyyyMMdd_HHmmss").format(new Date()); //include timestamp
 
                 File dir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES);
-                file = new File(dir, "PIC_"+timestamp);
+                file = new File(dir, "PIC_"+timestamp+".jpg");
                 boolean created = file.createNewFile(); //actually make the file!
                 Log.v(TAG, "File created: "+created);
 
@@ -54,6 +56,16 @@ public class PhotoActivity extends AppCompatActivity {
             if(file != null){ //make sure we can save the file!
                 pictureFileUri = Uri.fromFile(file);
                 Log.v(TAG, "Uri: "+pictureFileUri);
+
+                //for sharing the media (produces a Uri the Messenger has permissions for)
+                MediaScannerConnection.scanFile(this, new String[] { file.toString() }, null,
+                        new MediaScannerConnection.OnScanCompletedListener() {
+                            public void onScanCompleted(String path, Uri uri) {
+                                mediaStoreUri = uri;
+                                Log.v(TAG, "MediaStore Uri: "+uri);
+                            }
+                        });
+
 
                 takePictureIntent.putExtra(MediaStore.EXTRA_OUTPUT, pictureFileUri);
                 startActivityForResult(takePictureIntent, REQUEST_IMAGE_CAPTURE);
@@ -77,10 +89,10 @@ public class PhotoActivity extends AppCompatActivity {
 
         Intent intent = new Intent(Intent.ACTION_SEND);
         intent.setType("image/*");
-        intent.putExtra(Intent.EXTRA_STREAM, pictureFileUri);
-        Log.v(TAG, "Uri: "+pictureFileUri);
+        intent.putExtra(Intent.EXTRA_STREAM, mediaStoreUri);
+        Log.v(TAG, "Uri: "+mediaStoreUri);
 
-        Intent chooser = Intent.createChooser(intent, "Share Picture");
+        Intent chooser = Intent.createChooser(intent, "Share Picture"); //prompt user to pick
         //check that there is at least one option
         if (intent.resolveActivity(getPackageManager()) != null) {
             startActivity(chooser);
